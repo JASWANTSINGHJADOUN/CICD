@@ -1,0 +1,50 @@
+# Trigger pipeline on changes to main branch
+trigger:
+  - main
+
+# Define agent pool
+pool:
+  name: 'agent group for infra pipeline'
+
+# Steps of the pipeline
+steps:
+
+# 1. Checkout the code
+- task: Checkout@1
+
+# 2. Set up Python
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.11'  # Python version
+    addToPath: true
+
+# 3. Install dependencies
+- script: |
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+    pip install flake8 black pytest coverage
+  displayName: 'Install dependencies'
+
+# 4. Run linting
+- script: |
+    flake8 src/
+    black --check src/
+  displayName: 'Linting & Code formatting check'
+
+# 5. Run tests
+- script: |
+    pytest tests/ --maxfail=1 --disable-warnings -q
+  displayName: 'Run unit tests'
+
+# 6. Run code coverage
+- script: |
+    coverage run -m pytest
+    coverage report
+  displayName: 'Run coverage'
+
+# 7. (Optional) Publish test results
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/TEST-*.xml'
+    failTaskOnFailedTests: true
